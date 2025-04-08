@@ -19,9 +19,9 @@ cursor = db.cursor()
 
 # Kafka consumer setup
 consumer = KafkaConsumer(
-    'pageviews_topic',
-    'sessionduration_topic',
-    'timeonpage_topic',
+    'topic_pageviews',
+    'topic_sessionduration',
+    'topic_timeonpage',
     bootstrap_servers='localhost:9092',
     auto_offset_reset='earliest',
     value_deserializer=lambda m: json.loads(m.decode('utf-8')),
@@ -41,11 +41,11 @@ try:
         if record_id not in data_buffer:
             data_buffer[record_id] = {}
 
-        if topic == 'pageviews_topic':
+        if topic == 'topic_pageviews':
             data_buffer[record_id]['page_views'] = value['page_views']
-        elif topic == 'sessionduration_topic':
+        elif topic == 'topic_sessionduration':
             data_buffer[record_id]['session_duration'] = value['session_duration']
-        elif topic == 'timeonpage_topic':
+        elif topic == 'topic_timeonpage':
             data_buffer[record_id]['time_on_page'] = value['time_on_page']
         
         data_buffer[record_id]['timestamp'] = value['timestamp']

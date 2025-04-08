@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import time
 
 # Load dataset
-df = pd.read_csv('website_wata.csv')  # Update this with the actual path
+df = pd.read_csv('updated_db.csv')  # Update this with the actual path
 print(df)
 # Reset index to ensure sequential order
 #df = df.reset_index(drop=True)
@@ -27,7 +27,7 @@ base_timestamp = datetime.now()
 for i, row in df.iterrows():
     try:
         # Use i (0, 1, 2, ...) to increment timestamp by 1 second
-        current_timestamp = (base_timestamp + timedelta(seconds=i+5)).isoformat()
+        current_timestamp = row["timestamp"]
         
         # Create messages with the same timestamp
         page_views_msg = {
@@ -52,13 +52,13 @@ for i, row in df.iterrows():
         print("Session Duration Msg: ", session_duration_msg)
         print("Time on Page Msg:     ", time_on_page_msg)
         # Send messages to each topic
-        producer.send('pageviews_topic', value=page_views_msg)
+        producer.send('topic_pageviews', value=page_views_msg)
         count_page_views += 1
 
-        producer.send('sessionduration_topic', value=session_duration_msg)
+        producer.send('topic_sessionduration', value=session_duration_msg)
         count_session_duration += 1
 
-        producer.send('timeonpage_topic', value=time_on_page_msg)
+        producer.send('topic_timeonpage', value=time_on_page_msg)
         count_time_on_page += 1
 
         # Optional delay to simulate streaming
