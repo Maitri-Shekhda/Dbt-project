@@ -20,9 +20,6 @@ count_page_views = 0
 count_session_duration = 0
 count_time_on_page = 0
 
-# Base timestamp
-base_timestamp = datetime.now()
-
 # Loop through rows one at a time
 for i, row in df.iterrows():
     try:
