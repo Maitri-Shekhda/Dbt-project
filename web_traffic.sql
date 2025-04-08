@@ -10,8 +10,7 @@ CREATE TABLE IF NOT EXISTS raw_traffic_data (
     page_views VARCHAR(255),
     session_duration FLOAT,
     time_on_page FLOAT,
-    timestamp DATETIME,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    timestamp DATETIME
 );
 drop table streaming_metrics;
 -- Create table for processed streaming data
