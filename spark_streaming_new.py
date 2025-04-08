@@ -105,8 +105,14 @@ joined_df = spark.sql("""
 # Register the joined stream for further SQL analysis
 joined_df.createOrReplaceTempView("joined_stream")
 
-# Function to write to MySQL streaming_metrics table
-def write_to_streaming_metrics(df, epoch_id):
+
+def process_batch(df, epoch_id):
+    # Skip processing if no data
+    if df.count() == 0:
+        print(f"No data in batch {epoch_id}, skipping processing.")
+        return
+    
+    # 1. First write metrics to MySQL
     # Add processing time as a float (seconds)
     df_with_processing_time = df.withColumn("processing_time", 
                       unix_timestamp(col("processing_time")) - unix_timestamp(col("timestamp")))
@@ -128,44 +134,25 @@ def write_to_streaming_metrics(df, epoch_id):
         .save()
     
     print(f"Metrics Batch {epoch_id}: {metrics_df.count()} records processed")
-
-# Write streaming metrics to MySQL
-metrics_query = joined_df \
-    .writeStream \
-    .outputMode("append") \
-    .foreachBatch(write_to_streaming_metrics) \
-    .start()
-
-# Function to process analytics and write to MySQL
-def process_analytics(df, epoch_id):
-    if df.isEmpty():
-        print(f"No data in batch {epoch_id}, skipping analytics.")
-        return
-
-    # Register the current batch as a temporary view
-    df.createOrReplaceTempView("current_batch")
-
-    spark = SparkSession.builder.getOrCreate()
-
+    
+    # 2. Then process analytics with the same DataFrame directly
+    from pyspark.sql.functions import window, count, sum, expr, hour, avg, corr, min, max, when, lit
+    
     # 1. Page Views Distribution
-    page_views_distribution = spark.sql("""
-        WITH windowed_data AS (
-            SELECT 
-                window(timestamp, '5 minutes') AS window,
-                page_views
-            FROM current_batch
+    page_views_distribution = df \
+        .withColumn("window", window("timestamp", "5 minutes")) \
+        .groupBy("window", "page_views") \
+        .agg(count("*").alias("count")) \
+        .withColumn("percentage", expr("count * 100.0 / sum(count) over (partition by window)")) \
+        .select(
+            col("window.start").alias("window_start"),
+            col("window.end").alias("window_end"),
+            col("page_views"),
+            col("count"),
+            col("percentage")
         )
-        SELECT 
-            window.start AS window_start,
-            window.end AS window_end,
-            page_views,
-            COUNT(*) AS count,
-            (COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (PARTITION BY window.start, window.end)) AS percentage
-        FROM windowed_data
-        GROUP BY window.start, window.end, page_views
-    """)
-
-    if not page_views_distribution.isEmpty():
+    
+    if page_views_distribution.count() > 0:
         page_views_distribution.write \
             .format("jdbc") \
             .option("url", "jdbc:mysql://localhost:3306/website_traffic") \
@@ -178,28 +165,24 @@ def process_analytics(df, epoch_id):
         print(f"Page Views Batch {epoch_id}: {page_views_distribution.count()} records processed")
 
     # 2. Session Categories
-    session_categories = spark.sql("""
-        WITH windowed_data AS (
-            SELECT 
-                window(timestamp, '5 minutes') AS window,
-                CASE 
-                    WHEN session_duration < 60 THEN 'Short'
-                    WHEN session_duration < 300 THEN 'Medium'
-                    ELSE 'Long'
-                END AS session_category
-            FROM current_batch
+    session_categories = df \
+        .withColumn("window", window("timestamp", "5 minutes")) \
+        .withColumn("session_category", 
+                   when(col("session_duration") < 60, "Short")
+                   .when(col("session_duration") < 300, "Medium")
+                   .otherwise("Long")) \
+        .groupBy("window", "session_category") \
+        .agg(count("*").alias("count")) \
+        .withColumn("percentage", expr("count * 100.0 / sum(count) over (partition by window)")) \
+        .select(
+            col("window.start").alias("window_start"),
+            col("window.end").alias("window_end"),
+            col("session_category"),
+            col("count"),
+            col("percentage")
         )
-        SELECT 
-            window.start AS window_start,
-            window.end AS window_end,
-            session_category,
-            COUNT(*) AS count,
-            (COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (PARTITION BY window.start, window.end)) AS percentage
-        FROM windowed_data
-        GROUP BY window.start, window.end, session_category
-    """)
-
-    if not session_categories.isEmpty():
+    
+    if session_categories.count() > 0:
         session_categories.write \
             .format("jdbc") \
             .option("url", "jdbc:mysql://localhost:3306/website_traffic") \
@@ -212,24 +195,23 @@ def process_analytics(df, epoch_id):
         print(f"Session Categories Batch {epoch_id}: {session_categories.count()} records processed")
 
     # 3. Engagement Score Stats
-    engagement_scores = spark.sql("""
-        WITH windowed_data AS (
-            SELECT 
-                window(timestamp, '5 minutes') AS window,
-                engagement_score
-            FROM current_batch
+    engagement_scores = df \
+        .withColumn("window", window("timestamp", "5 minutes")) \
+        .groupBy("window") \
+        .agg(
+            avg("engagement_score").alias("avg_engagement_score"),
+            min("engagement_score").alias("min_engagement_score"),
+            max("engagement_score").alias("max_engagement_score")
+        ) \
+        .select(
+            col("window.start").alias("window_start"),
+            col("window.end").alias("window_end"),
+            col("avg_engagement_score"),
+            col("min_engagement_score"),
+            col("max_engagement_score")
         )
-        SELECT 
-            window.start AS window_start,
-            window.end AS window_end,
-            AVG(engagement_score) AS avg_engagement_score,
-            MIN(engagement_score) AS min_engagement_score,
-            MAX(engagement_score) AS max_engagement_score
-        FROM windowed_data
-        GROUP BY window.start, window.end
-    """)
-
-    if not engagement_scores.isEmpty():
+    
+    if engagement_scores.count() > 0:
         engagement_scores.write \
             .format("jdbc") \
             .option("url", "jdbc:mysql://localhost:3306/website_traffic") \
@@ -242,42 +224,38 @@ def process_analytics(df, epoch_id):
         print(f"Engagement Batch {epoch_id}: {engagement_scores.count()} records processed")
 
     # 4. Hourly Traffic Patterns (prints only)
-    hourly_patterns = spark.sql("""
-        SELECT 
-            HOUR(timestamp) AS hour_of_day,
-            COUNT(*) AS visit_count,
-            AVG(page_views) AS avg_page_views,
-            AVG(session_duration) AS avg_session_duration,
-            AVG(time_on_page) AS avg_time_on_page,
-            AVG(engagement_score) AS avg_engagement
-        FROM current_batch
-        GROUP BY HOUR(timestamp)
-        ORDER BY hour_of_day
-    """)
+    hourly_patterns = df \
+        .groupBy(hour("timestamp").alias("hour_of_day")) \
+        .agg(
+            count("*").alias("visit_count"),
+            avg("page_views").alias("avg_page_views"),
+            avg("session_duration").alias("avg_session_duration"),
+            avg("time_on_page").alias("avg_time_on_page"),
+            avg("engagement_score").alias("avg_engagement")
+        ) \
+        .orderBy("hour_of_day")
 
     print("Hourly Traffic Patterns:")
     hourly_patterns.show()
 
-    # 5. Correlation Metrics (prints only)
-    correlation_analysis = spark.sql("""
-        SELECT 
-            CORR(page_views, session_duration) AS corr_views_duration,
-            CORR(page_views, time_on_page) AS corr_views_time,
-            CORR(session_duration, time_on_page) AS corr_duration_time,
-            CORR(page_views, engagement_score) AS corr_views_engagement,
-            CORR(session_duration, engagement_score) AS corr_duration_engagement,
-            CORR(time_on_page, engagement_score) AS corr_time_engagement
-        FROM current_batch
-    """)
+    # 5. Correlation Analysis (prints only)
+    correlation_analysis = df.select(
+        corr("page_views", "session_duration").alias("corr_views_duration"),
+        corr("page_views", "time_on_page").alias("corr_views_time"),
+        corr("session_duration", "time_on_page").alias("corr_duration_time"),
+        corr("page_views", "engagement_score").alias("corr_views_engagement"),
+        corr("session_duration", "engagement_score").alias("corr_duration_engagement"),
+        corr("time_on_page", "engagement_score").alias("corr_time_engagement")
+    )
 
     print("Correlation Analysis:")
     correlation_analysis.show()
 
-# Process analytics
-analytics_query = joined_df \
+ #Combined streaming query for both metrics and analytics
+combined_query = joined_df \
     .writeStream \
     .outputMode("append") \
-    .foreachBatch(process_analytics) \
+    .foreachBatch(process_batch) \
     .start()
 
 # Wait for termination
