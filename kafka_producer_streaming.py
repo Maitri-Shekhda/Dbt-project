@@ -10,7 +10,7 @@ producer = KafkaProducer(
     value_serializer=lambda v: json.dumps(v).encode('utf-8')
 )
 
-record_id = 2153
+record_id = 2254
 
 while True:
     current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -46,4 +46,4 @@ while True:
     print("-" * 50)
 
     record_id += 1
-    time.sleep(45)  # simulate real-time interval
+    time.sleep(3)  # simulate real-time interval

@@ -44,7 +44,7 @@ for i, row in df.iterrows():
             'timestamp': current_timestamp,
             'record_id': i+1
         }
-        print("\n📤 Sending messages:")
+        print("\n Sending messages:")
         print("Page Views Msg:       ", page_views_msg)
         print("Session Duration Msg: ", session_duration_msg)
         print("Time on Page Msg:     ", time_on_page_msg)
@@ -62,15 +62,15 @@ for i, row in df.iterrows():
         time.sleep(0.05)  # 10 ms
 
         if i % 100 == 0:
-            print(f"✅ Processed record {i} with timestamp: {current_timestamp}")
+            print(f" Processed record {i} with timestamp: {current_timestamp}")
 
     except Exception as e:
-        print(f"❌ Error at record {i}: {e}")
+        print(f" Error at record {i}: {e}")
 
 # Flush messages
 producer.flush()
 
 # Final report
-print(f"\n✅ Sent {count_page_views} messages to 'pageviews' topic")
-print(f"✅ Sent {count_session_duration} messages to 'sessionduration' topic")
-print(f"✅ Sent {count_time_on_page} messages to 'timeonpage' topic")
+print(f"\n Sent {count_page_views} messages to 'pageviews' topic")
+print(f" Sent {count_session_duration} messages to 'sessionduration' topic")
+print(f" Sent {count_time_on_page} messages to 'timeonpage' topic")

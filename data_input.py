@@ -8,7 +8,7 @@ df = pd.read_csv("updated_db.csv")
 db = mysql.connector.connect(
     host="localhost",
     user="root",       # Change this
-    password="password",   # Change this
+    password="2004",   # Change this
     database="website_traffic"    # Change this
 )
 cursor = db.cursor()
@@ -23,6 +23,8 @@ cursor.execute("""
     timestamp DATETIME
 )
 """)
+print(df.columns)
+print(df.dtypes)
 
 # Insert each row
 for _, row in df.iterrows():

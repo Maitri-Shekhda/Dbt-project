@@ -11,7 +11,7 @@ data_buffer = {}
 db = mysql.connector.connect(
     host="localhost",
     user="root",
-    password="SR11**sa",
+    password="2004",
     database="website_traffic"
 )
 
@@ -25,7 +25,8 @@ consumer = KafkaConsumer(
     bootstrap_servers='localhost:9092',
     auto_offset_reset='earliest',
     value_deserializer=lambda m: json.loads(m.decode('utf-8')),
-    group_id='web-traffic-group'
+    group_id='web-traffic-group-test'  # <- new group name
+
 )
 try:
     print("Starting Kafka consumer. Press Ctrl+C to exit.")
@@ -36,7 +37,8 @@ try:
         topic = message.topic
         value = message.value
         record_id = value['record_id']
-        
+        print(f"Received message on topic '{topic}': {value}")
+
         # Add to buffer
         if record_id not in data_buffer:
             data_buffer[record_id] = {}
@@ -65,9 +67,9 @@ try:
                     row['timestamp']
                 ))
                 db.commit()
-                print(f"✅ Inserted record_id {record_id} into raw_traffic_data")
+                print(f" Inserted record_id {record_id} into raw_traffic_data")
             except Exception as e:
-                print(f"❌ Failed to insert record_id {record_id}: {e}")
+                print(f" Failed to insert record_id {record_id}: {e}")
 except KeyboardInterrupt:
     print("Consumer stopped by user")
 finally:

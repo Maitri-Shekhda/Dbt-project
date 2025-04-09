@@ -12,17 +12,10 @@ CREATE TABLE IF NOT EXISTS raw_traffic_data (
     time_on_page FLOAT,
     timestamp DATETIME
 );
-drop table streaming_metrics;
+-- drop table streaming_metrics;
 -- Create table for processed streaming data
-CREATE TABLE streaming_metrics (
-    record_id INT PRIMARY KEY,
-    timestamp DATETIME,
-    page_views INT,
-    session_duration FLOAT,
-    time_on_page FLOAT,
-    processing_time FLOAT
-);
-select * from page_views_distribution;
+
+-- select * from page_views_distribution;
 -- Create table for page views distribution
 CREATE TABLE IF NOT EXISTS page_views_distribution (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -59,10 +52,15 @@ CREATE TABLE IF NOT EXISTS engagement_scores (
 
 -- Create indexes for better query performance
 CREATE INDEX idx_raw_timestamp ON raw_traffic_data(timestamp);
-CREATE INDEX idx_streaming_window ON streaming_metrics(window_start, window_end);
-CREATE INDEX idx_batch_window ON batch_metrics(window_start, window_end);
+-- CREATE INDEX idx_streaming_window ON streaming_metrics(window_start, window_end);
+-- CREATE INDEX idx_batch_window ON batch_metrics(window_start, window_end);
 
 SELECT * FROM streaming_metrics ;
 select * from raw_traffic_data;
+SELECT COUNT(*) FROM raw_traffic_data;
 SELECT COUNT(*) FROM streaming_metrics;
+
+select * from session_categories;
+select * from page_views_distribution;
+select * from engagement_scores;
 

@@ -129,7 +129,7 @@ def process_batch(df, epoch_id):
         .option("driver", "com.mysql.cj.jdbc.Driver") \
         .option("dbtable", "streaming_metrics") \
         .option("user", "root") \
-        .option("password", "SR11**sa") \
+        .option("password", "2004") \
         .mode("append") \
         .save()
     
@@ -159,7 +159,7 @@ def process_batch(df, epoch_id):
             .option("driver", "com.mysql.cj.jdbc.Driver") \
             .option("dbtable", "page_views_distribution") \
             .option("user", "root") \
-            .option("password", "SR11**sa") \
+            .option("password", "2004") \
             .mode("append") \
             .save()
         print(f"Page Views Batch {epoch_id}: {page_views_distribution.count()} records processed")
@@ -189,7 +189,7 @@ def process_batch(df, epoch_id):
             .option("driver", "com.mysql.cj.jdbc.Driver") \
             .option("dbtable", "session_categories") \
             .option("user", "root") \
-            .option("password", "SR11**sa") \
+            .option("password", "2004") \
             .mode("append") \
             .save()
         print(f"Session Categories Batch {epoch_id}: {session_categories.count()} records processed")
@@ -218,7 +218,7 @@ def process_batch(df, epoch_id):
             .option("driver", "com.mysql.cj.jdbc.Driver") \
             .option("dbtable", "engagement_scores") \
             .option("user", "root") \
-            .option("password", "SR11**sa") \
+            .option("password", "2004") \
             .mode("append") \
             .save()
         print(f"Engagement Batch {epoch_id}: {engagement_scores.count()} records processed")
